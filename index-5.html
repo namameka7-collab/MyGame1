@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Уровень 1 — Проклятый лес</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#05070a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
+    background: #05070a;
+    overscroll-behavior: none;
+  }
+
+  /* ===== ОБЁРТКА: центрирует сцену и красит "поля" по краям экрана ===== */
+  #viewport {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    overflow: hidden;
+  }
+
+  /* ===== СЦЕНА фиксированного дизайн-разрешения 1750x899 =====
+     Она масштабируется через transform, поэтому координаты всех
+     персонажей всегда точно совпадают с фоном на любом экране. */
+  #stage {
+    position: relative;
+    width: 1750px;
+    height: 899px;
+    flex-shrink: 0;
+    transform-origin: center center;
+    overflow: hidden;
+  }
+
+  #stage img.bg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 1750px;
+    height: 899px;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  /* ===== СПРАЙТЫ ПЕРСОНАЖЕЙ ===== */
+  .unit {
+    position: absolute;
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+  }
+  .unit img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    filter: drop-shadow(0 6px 8px rgba(0,0,0,0.55));
+  }
+
+  #wolf-1 {
+    left: 1072px;
+    top: 395px;
+    width: 344px;
+    height: 233px;
+    animation: growl 3.2s ease-in-out infinite;
+    transform-origin: 70% 100%;
+  }
+  @keyframes growl {
+    0%, 100% { transform: rotate(0deg) translateY(0); }
+    50%      { transform: rotate(-1.2deg) translateY(-3px); }
+  }
+
+  /* Герой: зеркально волку относительно центра сцены (875px),
+     стоит на той же линии земли, лицом к волку. */
+  #hero-1 {
+    left: 258px;
+    top: 288px;
+    width: 496px;
+    height: 340px;
+    animation: hero-idle 3.6s ease-in-out infinite;
+    transform-origin: 50% 100%;
+  }
+  @keyframes hero-idle {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-4px); }
+  }
+
+  /* ===== ОБЁРТКА РЫВКА ГЕРОЯ =====
+     Отдельный слой поверх сцены только для translateX-рывка вперёд/назад.
+     Раскладка и покачивание самого героя (#hero-1) остаются как были —
+     так transition (рывок) и infinite-анimация (покачивание) не конфликтуют
+     на одном и том же transform. */
+  #hero-lunge {
+    position: absolute;
+    inset: 0;
+    transition: transform 0.45s cubic-bezier(.4,0,.2,1);
+    pointer-events: none;
+  }
+  #hero-lunge.attacking {
+    transform: translateX(280px);
+  }
+
+  /* ===== ЭФФЕКТ УДАРА (красная вспышка-выпад) ===== */
+  #strike-fx {
+    position: absolute;
+    left: 880px;
+    top: 355px;
+    width: 420px;
+    height: 189px;
+    background: url('assets/strike-fx.png') center/contain no-repeat;
+    mix-blend-mode: screen; /* чёрный фон картинки становится прозрачным */
+    opacity: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+  #strike-fx.show {
+    animation: fx-pop 0.4s ease-out;
+  }
+  @keyframes fx-pop {
+    0%   { opacity: 0; transform: scale(0.7) rotate(-6deg); }
+    25%  { opacity: 1; transform: scale(1.08) rotate(2deg); }
+    55%  { opacity: 1; transform: scale(1) rotate(0deg); }
+    100% { opacity: 0; transform: scale(1.1) rotate(2deg); }
+  }
+
+  /* ===== РЕАКЦИЯ ВОЛКА НА УДАР: тряска + красная вспышка ===== */
+  #wolf-1.hit {
+    animation: wolf-hit 0.4s ease-in-out;
+  }
+  @keyframes wolf-hit {
+    0%   { transform: rotate(0deg) translateX(0); filter: none; }
+    15%  { transform: rotate(-5deg) translateX(-14px); filter: brightness(1.5) saturate(4) sepia(1) hue-rotate(-50deg); }
+    30%  { transform: rotate(4deg) translateX(10px); filter: brightness(1.6) saturate(5) sepia(1) hue-rotate(-50deg); }
+    45%  { transform: rotate(-3deg) translateX(-7px); filter: brightness(1.4) saturate(4) sepia(1) hue-rotate(-50deg); }
+    65%  { transform: rotate(1deg) translateX(4px); filter: none; }
+    100% { transform: rotate(0deg) translateX(0); filter: none; }
+  }
+
+  /* ===== КНОПКА "ВЫПАД" ===== */
+  #atk-btn {
+    position: absolute;
+    left: 330px;
+    top: 686px;
+    width: 300px;
+    height: 168px;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    background: url('assets/btn-vypad.png') center/contain no-repeat;
+    mix-blend-mode: screen; /* чёрный фон картинки-кнопки становится прозрачным */
+    filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55));
+    -webkit-tap-highlight-color: transparent;
+    transition: filter 0.25s ease, transform 0.12s ease;
+    z-index: 20;
+  }
+  #atk-btn:active { transform: scale(0.96); }
+  #atk-btn.cooldown {
+    filter: grayscale(0.85) brightness(0.55) drop-shadow(0 6px 14px rgba(0,0,0,0.55));
+    cursor: default;
+  }
+  #atk-btn .cd-num {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-family: sans-serif;
+    font-weight: 700;
+    font-size: 56px;
+    color: #eae4d3;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.85);
+  }
+  #atk-btn.cooldown .cd-num { display: flex; }
+
+  /* ===== ЭКРАН "ПОВЕРНИТЕ ТЕЛЕФОН" ===== */
+  #rotate-hint {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    background: #05070a;
+    color: #eae4d3;
+    font-family: sans-serif;
+    text-align: center;
+    z-index: 9999;
+    padding: 24px;
+  }
+  #rotate-hint svg {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+    animation: spin 1.6s ease-in-out infinite;
+  }
+  #rotate-hint p { font-size: 16px; opacity: 0.85; margin: 0; }
+  @keyframes spin {
+    0%   { transform: rotate(0deg); }
+    50%  { transform: rotate(-90deg); }
+    100% { transform: rotate(-90deg); }
+  }
+  @media screen and (orientation: portrait) and (max-width: 900px) {
+    #viewport { display: none; }
+    #rotate-hint { display: flex; }
+  }
+
+  /* ===== КНОПКА "НА ВЕСЬ ЭКРАН" ===== */
+  #fs-btn {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 500;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(10,10,12,0.55);
+    color: #eae4d3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #fs-btn svg { width: 22px; height: 22px; }
+  body.is-fullscreen #fs-btn { display: none; }
+</style>
+</head>
+<body>
+
+<div id="viewport">
+  <div id="stage">
+    <picture>
+      <source srcset="assets/level_bg.webp" type="image/webp">
+      <img class="bg" src="assets/level_bg.jpg" alt="Фон уровня">
+    </picture>
+
+    <div id="hero-lunge">
+      <div class="unit" id="hero-1">
+        <picture>
+          <source srcset="assets/hero.webp" type="image/webp">
+          <img src="assets/hero.png" alt="Герой игрока">
+        </picture>
+      </div>
+    </div>
+
+    <div class="unit" id="wolf-1">
+      <picture>
+        <source srcset="assets/wolf.webp" type="image/webp">
+        <img src="assets/wolf.png" alt="Волк-противник">
+      </picture>
+    </div>
+
+    <div id="strike-fx"></div>
+
+    <button id="atk-btn" aria-label="Выпад">
+      <span class="cd-num">1</span>
+    </button>
+  </div>
+</div>
+
+<button id="fs-btn" aria-label="На весь экран">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/>
+  </svg>
+</button>
+
+<div id="rotate-hint">
+  <svg viewBox="0 0 24 24" fill="none" stroke="#eae4d3" stroke-width="1.6">
+    <rect x="5" y="2" width="14" height="20" rx="2"/>
+    <line x1="5" y1="18" x2="19" y2="18"/>
+  </svg>
+  <p>Поверните телефон горизонтально,<br>чтобы начать бой</p>
+</div>
+
+<script>
+  // Масштабируем #stage целиком под размер окна (contain — вписываем без обрезки),
+  // чтобы позиции персонажей всегда точно совпадали с разметкой на фоне.
+  // Берём visualViewport, если он доступен — он точнее отражает реально
+  // видимую область на мобильных браузерах (без адресной строки и т.п.).
+  function fitStage() {
+    var stage = document.getElementById('stage');
+    var vv = window.visualViewport;
+    var vw = vv ? vv.width : window.innerWidth;
+    var vh = vv ? vv.height : window.innerHeight;
+    // Math.max вместо Math.min: сцена заполняет весь экран целиком
+    // (небольшая обрезка по краям вместо чёрных полос).
+    var scale = Math.max(vw / 1750, vh / 899);
+    stage.style.transform = 'scale(' + scale + ')';
+  }
+  window.addEventListener('resize', fitStage);
+  window.addEventListener('orientationchange', fitStage);
+  window.addEventListener('load', fitStage);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', fitStage);
+  }
+  fitStage();
+
+  function tryLockLandscape() {
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('landscape').catch(function () {});
+    }
+  }
+
+  // Полноэкранный режим: прячет адресную строку и системные панели
+  // внутри вкладки браузера. Требует явного жеста пользователя.
+  function goFullscreen() {
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen;
+    if (req) {
+      req.call(el).catch(function () {});
+    }
+  }
+
+  function onFirstTap() {
+    tryLockLandscape();
+    goFullscreen();
+  }
+  document.addEventListener('click', onFirstTap, { once: true });
+  window.addEventListener('load', tryLockLandscape);
+
+  // ===== ЛОГИКА КНОПКИ "ВЫПАД" =====
+  // Тайминги подобраны под длительность transition/animation, заданных в CSS выше:
+  // рывок героя — 450мс, эффект удара/тряска волка — 400мс, возврат героя — 450мс.
+  // Кулдаун "1 ход" реализован как таймер на длительность полного цикла атаки —
+  // в проекте пока нет отдельной пошаговой (turn-based) логики, поэтому если у вас
+  // есть системный "конец хода" (например, после хода волка) — кулдаун лучше снимать
+  // именно этим событием, а не таймером. Скажите, если нужно завязать на это.
+  var atkBtn = document.getElementById('atk-btn');
+  var heroLunge = document.getElementById('hero-lunge');
+  var wolf1 = document.getElementById('wolf-1');
+  var strikeFx = document.getElementById('strike-fx');
+  var atkCooldown = false;
+
+  var LUNGE_MS = 450;
+  var HIT_MS = 400;
+  var RETURN_MS = 450;
+  var COOLDOWN_MS = LUNGE_MS + HIT_MS + RETURN_MS + 400; // + небольшой запас
+
+  atkBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (atkCooldown) return;
+    atkCooldown = true;
+    atkBtn.classList.add('cooldown');
+
+    // 1. Герой подъезжает к волку
+    heroLunge.classList.add('attacking');
+
+    // 2. Удар: вспышка эффекта + тряска и красное моргание волка
+    setTimeout(function () {
+      strikeFx.classList.remove('show');
+      void strikeFx.offsetWidth; // форс reflow, чтобы анимацию можно было запустить повторно
+      strikeFx.classList.add('show');
+
+      wolf1.classList.remove('hit');
+      void wolf1.offsetWidth;
+      wolf1.classList.add('hit');
+    }, LUNGE_MS);
+
+    // 3. Герой возвращается на исходную позицию
+    setTimeout(function () {
+      heroLunge.classList.remove('attacking');
+    }, LUNGE_MS + HIT_MS);
+
+    // 4. Кулдаун кнопки на "1 ход"
+    setTimeout(function () {
+      atkCooldown = false;
+      atkBtn.classList.remove('cooldown');
+    }, COOLDOWN_MS);
+  });
+
+  strikeFx.addEventListener('animationend', function () {
+    strikeFx.classList.remove('show');
+  });
+  wolf1.addEventListener('animationend', function (ev) {
+    if (ev.animationName === 'wolf-hit') wolf1.classList.remove('hit');
+  });
+
+  var fsBtn = document.getElementById('fs-btn');
+  fsBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    goFullscreen();
+    tryLockLandscape();
+  });
+
+  function updateFsState() {
+    var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    document.body.classList.toggle('is-fullscreen', isFs);
+    fitStage();
+  }
+  document.addEventListener('fullscreenchange', updateFsState);
+  document.addEventListener('webkitfullscreenchange', updateFsState);
+
+  // Если игра открыта как установленное PWA (добавлено на главный экран
+  // с display:"fullscreen" в manifest) — браузерных панелей нет уже
+  // изначально, кнопку "на весь экран" в этом случае прячем.
+  if (window.matchMedia('(display-mode: fullscreen)').matches ||
+      window.matchMedia('(display-mode: standalone)').matches) {
+    document.body.classList.add('is-fullscreen');
+  }
+</script>
+
+</body>
+</html>
