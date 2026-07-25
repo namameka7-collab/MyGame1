@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Dark Tower — Пробуждение</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Cormorant+Garamond:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #6d6e73;
+    --panel-line: rgba(0,0,0,0.25);
+    --gold: #e8d8b0;
+    --text: #e9e7e2;
+    --text-dim: #c9c7c2;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%; height: 100dvh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  #screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ===== ВЕРХНЯЯ ЗОНА: ТЕКСТ + ПЕРСОНАЖ ===== */
+  #top-zone {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+  }
+
+  #text-zone {
+    position: relative;
+    z-index: 2;
+    width: 54%;
+    padding: 26px 10px 28px 22px;
+  }
+  #text-zone h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 19px;
+    letter-spacing: 1.5px;
+    color: var(--gold);
+    margin: 0 0 14px;
+    line-height: 1.35;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  }
+  #text-zone p {
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--text-dim);
+    margin: 0 0 12px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  #text-zone p:last-child { margin-bottom: 0; }
+
+  #char-zone {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 56%;
+    height: 78%;
+    z-index: 1;
+  }
+  #char-zone picture {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  #char-zone img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: bottom right;
+    display: block;
+    filter: drop-shadow(0 14px 18px rgba(0,0,0,0.35));
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  /* ===== НИЖНЯЯ ЗОНА: КНОПКА ===== */
+  #bottom-zone {
+    flex: 0 0 auto;
+    padding: 18px 22px calc(22px + env(safe-area-inset-bottom));
+    display: flex;
+    justify-content: center;
+  }
+
+  button#select-btn {
+    width: 100%;
+    max-width: 420px;
+    font-family: 'Cinzel', serif;
+    font-size: 15px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    background: transparent;
+    border: 1.5px solid var(--gold);
+    border-radius: 4px;
+    padding: 15px 10px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  button#select-btn:active {
+    background: var(--gold);
+    color: #33322c;
+  }
+</style>
+</head>
+<body>
+
+<div id="screen">
+  <div id="top-zone">
+    <div id="char-zone">
+      <picture>
+        <source srcset="assets/mage.webp" type="image/webp">
+        <img src="assets/mage.png" alt="Маг">
+      </picture>
+    </div>
+    <div id="text-zone">
+      <h1>Добро пожаловать в мир Dark Tower</h1>
+      <p>Ты приходишь в себя посреди тёмного леса. Ветер шепчет что-то на языке, которого ты не помнишь. Тело ноет, будто после долгого сна — или падения.</p>
+      <p>Ты пытаешься вспомнить, кто ты... но память молчит. Единственное, что осталось — смутное чувство: где-то там, за деревьями, тебя уже ждут.</p>
+    </div>
+  </div>
+
+  <div id="bottom-zone">
+    <button id="select-btn">Выбрать персонажа</button>
+  </div>
+</div>
+
+<script>
+  document.getElementById('select-btn').addEventListener('click', function () {
+    // здесь дальше будет переход на экран выбора персонажа
+    console.log('Выбрать персонажа — переход на следующий экран');
+  });
+</script>
+
+</body>
+</html>
